@@ -1,0 +1,30 @@
+# squillion-mqtt config
+
+logging_remote: false
+#logging_endpoint: "fluentd.fluentd:24224"
+
+listeners:
+- port: 1883
+  websocket: false
+- port: 8083
+  websocket: true
+#- port: 8883
+#  websocket: false
+#  tlscrt: ./tests/tls/tls.crt
+#  tlskey: ./tests/tls/tls.key
+#- port: 8084
+#  websocket: true
+#  tlscrt: ./tests/tls/tls.crt
+#  tlskey: ./tests/tls/tls.key
+
+auth_method: "pwdlist"
+#password_file: ./tests/users.txt
+
+users:
+- username: user1
+  password: password1
+- username: user2
+  password: password2
+
+persist_method: "sqlite"
+persist_data_store: './data'
