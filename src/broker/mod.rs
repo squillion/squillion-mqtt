@@ -24,6 +24,9 @@ use crate::broker::router::MessageRouterTx;
 use crate::sessions::sessionworker::SessionTx;
 use crate::sessions::Sessions;
 
+#[cfg(test)]
+mod testpersist;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum BrokerError {
     PersistError(String),
@@ -199,7 +202,7 @@ impl MqttBroker {
 
     pub async fn start_router(&mut self) {
         if self.database_pool.is_none() {
-            self.database_pool = Some(get_persist_pool());
+            self.database_pool = Some(get_persist_pool(&self.broker_id));
         }
         let mut message_router = MessageRouter::new(
             self.logger.clone(),

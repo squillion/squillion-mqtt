@@ -93,11 +93,15 @@ impl GlobalConfig {
 
 #[cfg(test)]
 pub fn load_test_config() -> Result<(), Box<dyn std::error::Error>> {
-    GLOBALCONFIG
-        .config
-        .lock()
-        .unwrap()
-        .insert("persist_method".to_string(), "test".to_string());
+    GLOBALCONFIG.config.lock().unwrap().persist_method = "test".to_owned();
+    Ok(())
+}
+
+#[cfg(test)]
+pub fn load_sqlite_test_config() -> Result<(), Box<dyn std::error::Error>> {
+    GLOBALCONFIG.config.lock().unwrap().persist_method = "sqlite".to_owned();
+
+    GLOBALCONFIG.config.lock().unwrap().persist_data_store = "./tests/data".to_owned();
     Ok(())
 }
 

@@ -1,3 +1,6 @@
+use std::fs;
+use std::path::Path;
+
 use async_trait::async_trait;
 
 use super::router::SessionId;
@@ -80,7 +83,15 @@ pub fn get_persist_provider(
     }
 }
 
-pub fn get_persist_pool() -> Pool {
-    let mut cfg = deadpool_sqlite::Config::new("database.sqlite3");
+pub fn get_persist_pool(broker_id: &BrokerId) -> Pool {
+    let persist_path = config::get_string("persist_data_store").unwrap();
+    let mut path = Path::new(&persist_path)
+        .join("tenants")
+        .join(broker_id.tenant_id.clone());
+    fs::create_dir_all(&path).unwrap();
+
+    path = path.join("database.sqlite3");
+
+    let cfg = deadpool_sqlite::Config::new(path);
     cfg.create_pool(deadpool_sqlite::Runtime::Tokio1).unwrap()
 }
