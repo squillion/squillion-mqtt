@@ -49,12 +49,7 @@ impl PersistProvider for PersistTopicTest {
     }
 
     async fn persist_topic(&mut self, _topic: String) -> Result<i32, BrokerError> {
-        let _schema = format!(
-            "mqtt__{}__{}",
-            self.broker_id.tenant_id, self.broker_id.broker_id
-        );
         let value = 0_i32;
-
         Ok(value)
     }
 

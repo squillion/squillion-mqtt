@@ -129,7 +129,7 @@ impl MQTTSession {
         let counter_publish_received = PUBLISH_RECEIVED_COUNTER.with_label_values(&[
             config::get_hostname(),
             config::get_uuid(),
-            &broker_id.tenant_id,
+            &broker_id.tenant_id.clone().unwrap_or("".to_string()),
             &broker_id.broker_id,
             &id,
         ]);
@@ -137,7 +137,7 @@ impl MQTTSession {
         let counter_publish_sent = PUBLISH_SENT_COUNTER.with_label_values(&[
             config::get_hostname(),
             config::get_uuid(),
-            &broker_id.tenant_id,
+            &broker_id.tenant_id.clone().unwrap_or("".to_string()),
             &broker_id.broker_id,
             &id,
         ]);

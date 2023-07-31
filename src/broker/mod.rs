@@ -50,20 +50,25 @@ impl error::Error for BrokerError {
 
 #[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Default, Clone)]
 pub struct BrokerId {
-    pub tenant_id: String,
+    pub tenant_id: Option<String>,
     pub broker_id: String,
 }
 
 impl fmt::Display for BrokerId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Tenant {} Broker {}", self.tenant_id, self.broker_id)
+        write!(
+            f,
+            "Tenant {} Broker {}",
+            self.tenant_id.clone().unwrap_or(String::from("''")),
+            self.broker_id
+        )
     }
 }
 
 impl BrokerId {
     pub fn test_broker() -> BrokerId {
         BrokerId {
-            tenant_id: "test_tenant".to_string(),
+            tenant_id: Some("test_tenant".to_string()),
             broker_id: "test_broker".to_string(),
         }
     }

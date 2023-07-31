@@ -1,0 +1,5 @@
+user1:{SHA}44rSFJQ9qtHWTBAvrsKd5K/p2j0=
+user2:{SHA}KqYKj/f81HPTIeAUav2eJt85UUc=
+user3:{SHA}ERnP037iRzV+A0oI2ETuol9v0g8=
+user4:{SHA}oddYTarKRzjUma1wgohrARFyddg=
+user5:{SHA}7bqVXQ6hX9709hcm75flr1B0MMA=

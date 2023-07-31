@@ -22,7 +22,7 @@ impl AuthProvider for TestAuth {
             Some(user.to_string())
         } else {
             let broker = BrokerId::test_broker();
-            Some(broker.tenant_id)
+            broker.tenant_id
         }
     }
 }

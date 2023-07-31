@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 
 use async_trait::async_trait;
 
@@ -85,9 +86,14 @@ pub fn get_persist_provider(
 
 pub fn get_persist_pool(broker_id: &BrokerId) -> Pool {
     let persist_path = config::get_string("persist_data_store").unwrap();
-    let mut path = Path::new(&persist_path)
-        .join("tenants")
-        .join(broker_id.tenant_id.clone());
+    let mut path: PathBuf = Path::new(&persist_path).to_path_buf();
+
+    if let Some(tenant_id) = &broker_id.tenant_id {
+        path = path.join("tenants").join(tenant_id);
+    } else {
+        path = path.join("none");
+    }
+
     fs::create_dir_all(&path).unwrap();
 
     path = path.join("database.sqlite3");

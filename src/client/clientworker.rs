@@ -134,7 +134,12 @@ where
         let guage_clients_connected = CLIENTS_CONNECTED_GUAGE.with_label_values(&[
             config::get_hostname(),
             config::get_uuid(),
-            &self.client.broker_id.tenant_id,
+            &self
+                .client
+                .broker_id
+                .tenant_id
+                .clone()
+                .unwrap_or("".to_string()),
             &self.client.broker_id.broker_id,
         ]);
 

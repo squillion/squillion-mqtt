@@ -437,7 +437,7 @@ where
                             if let Ok(auth_response) = conn_auth_rx.await {
                                 if auth_response.return_code == messages::ReturnCode::Accepted {
                                     let broker = BrokerId {
-                                        tenant_id: auth_response.tenant.unwrap(),
+                                        tenant_id: auth_response.tenant,
                                         broker_id: "default".to_string(),
                                     };
                                     let client = Client::new(

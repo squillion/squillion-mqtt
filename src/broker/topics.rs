@@ -68,14 +68,14 @@ impl Subscriptions {
         let guage_subscriptions = SUBSCRIPTIONS_GUAGE.with_label_values(&[
             config::get_hostname(),
             config::get_uuid(),
-            &broker_id.tenant_id,
+            &broker_id.tenant_id.clone().unwrap_or("".to_string()),
             &broker_id.broker_id,
         ]);
 
         let guage_retained_messages = RETAINED_MESSAGES_GUAGE.with_label_values(&[
             config::get_hostname(),
             config::get_uuid(),
-            &broker_id.tenant_id,
+            &broker_id.tenant_id.clone().unwrap_or("".to_string()),
             &broker_id.broker_id,
         ]);
 
