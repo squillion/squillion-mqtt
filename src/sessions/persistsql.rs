@@ -57,7 +57,7 @@ impl SessionPersistProvider for PersistSessionSQL {
                     |row| Ok((
                         row.get::<_, i32>(0),
                         row.get::<_, i64>(1),
-                        row.get::<_, i32>(3),
+                        row.get::<_, i32>(2),
                     )),
                 )
                 .optional()
@@ -154,7 +154,7 @@ impl SessionPersistProvider for PersistSessionSQL {
             .map_err(|err| SessionError::Persist(format!("Failed to run query: {:?}", err)))?
     }
 
-    async fn persist_update_session(
+    async fn persist_update_session_generation(
         &mut self,
         internal_id: i32,
         generation: i64,
@@ -167,13 +167,13 @@ impl SessionPersistProvider for PersistSessionSQL {
         client
             .interact(move |db| {
                 let mut stmt = db
-                    .prepare("UPDATE sessions SET next_mid = :next_mid WHERE id = :id RETURNING next_mid")
+                    .prepare("UPDATE sessions SET generation = :generation, next_mid = 1 WHERE id = :id RETURNING id")
                     .map_err(|err| SessionError::Persist(format!("{:}", err)))?;
 
                 stmt.query_row(
                     named_params! {
                     ":id": internal_id,
-                    ":next_mid": generation
+                    ":generation": generation
                     },
                     |row| row.get::<_, i32>(0),
                 )
@@ -596,7 +596,7 @@ impl SessionPersistProvider for PersistSessionSQL {
                 stmt.query_row(
                     named_params! {
                     ":next_mid": mid,
-                    "id": internal_id,
+                    ":id": internal_id,
                     },
                     |row| row.get::<_, u16>(0),
                 )

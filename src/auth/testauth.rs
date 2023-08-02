@@ -2,6 +2,9 @@ use async_trait::async_trait;
 
 use crate::auth::AuthProvider;
 use crate::broker::BrokerId;
+use crate::messages::ReturnCode;
+
+use super::AuthResponse;
 
 pub struct TestAuth {}
 
@@ -17,12 +20,18 @@ impl AuthProvider for TestAuth {
         Ok(())
     }
 
-    async fn check_password(&self, user: &str, _password: &str) -> Option<String> {
+    async fn check_password(&self, user: &str, _password: &str) -> AuthResponse {
         if !user.is_empty() {
-            Some(user.to_string())
+            AuthResponse {
+                return_code: ReturnCode::Accepted,
+                tenant: Some(user.to_string()),
+            }
         } else {
             let broker = BrokerId::test_broker();
-            broker.tenant_id
+            AuthResponse {
+                return_code: ReturnCode::Accepted,
+                tenant: broker.tenant_id,
+            }
         }
     }
 }

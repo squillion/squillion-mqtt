@@ -16,7 +16,7 @@ pub trait SessionPersistProvider: Sync + Send {
 
     async fn persist_session(&mut self, id: String) -> Result<(i32, i64, bool, u16), SessionError>;
 
-    async fn persist_update_session(
+    async fn persist_update_session_generation(
         &mut self,
         internal_id: i32,
         generation: i64,

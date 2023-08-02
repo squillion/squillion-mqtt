@@ -58,7 +58,7 @@ pub enum MQTTQos {
 
 pub const MQTT311_VERSION: u8 = 4;
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ReturnCode {
     Accepted = 0,
     UnacceptableVersion = 1,

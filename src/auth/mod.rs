@@ -45,7 +45,7 @@ impl AuthRequest {
 #[async_trait]
 trait AuthProvider: Sync + Send {
     fn initialize(&mut self) -> Result<(), ()>;
-    async fn check_password(&self, user: &str, password: &str) -> Option<String>;
+    async fn check_password(&self, user: &str, password: &str) -> AuthResponse;
 }
 
 pub struct AuthService {
@@ -97,24 +97,14 @@ impl AuthService {
             loop {
                 match auth_rx.next().await {
                     Some(msg) => {
-                        let return_code;
-                        let mut tenant = None;
-
-                        if let Some(found_tenant) = auth_provider
+                        let auth_response = auth_provider
                             .check_password(&msg.username, &msg.password)
-                            .await
-                        {
-                            return_code = messages::ReturnCode::Accepted;
-                            tenant = Some(found_tenant)
-                        } else {
-                            return_code = messages::ReturnCode::BadUsernameOrPassword;
+                            .await;
+
+                        if auth_response.return_code != messages::ReturnCode::Accepted {
                             slog::debug!(logger, "Client auth failed. Username: {}", msg.username);
                         }
 
-                        let auth_response = AuthResponse {
-                            return_code,
-                            tenant,
-                        };
                         if msg.response_channel.send(auth_response).is_err() {
                             slog::warn!(logger, "Unable to send auth response");
                         }

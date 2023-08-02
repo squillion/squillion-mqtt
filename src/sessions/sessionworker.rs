@@ -182,13 +182,13 @@ impl MQTTSession {
         self.persist.load_persistent_subscriptions(session_id).await
     }
 
-    async fn persist_update_session(
+    async fn persist_update_session_generation(
         &mut self,
         internal_id: i32,
         generation: i64,
     ) -> Result<i32, SessionError> {
         self.persist
-            .persist_update_session(internal_id, generation)
+            .persist_update_session_generation(internal_id, generation)
             .await
     }
 
@@ -902,7 +902,7 @@ impl MQTTSession {
         self.generation += 1;
         self.next_message_id = 1;
         match self
-            .persist_update_session(self.internal_id, self.generation)
+            .persist_update_session_generation(self.internal_id, self.generation)
             .await
         {
             Err(e) => Err(e),

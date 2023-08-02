@@ -41,7 +41,7 @@ impl SessionPersistProvider for PersistSessionTest {
         return Ok(result);
     }
 
-    async fn persist_update_session(
+    async fn persist_update_session_generation(
         &mut self,
         internal_id: i32,
         _generation: i64,

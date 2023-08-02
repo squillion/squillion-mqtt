@@ -8,6 +8,9 @@ use crypto::sha1::Sha1;
 
 use crate::auth::AuthProvider;
 use crate::config;
+use crate::messages::ReturnCode;
+
+use super::AuthResponse;
 
 fn check_sha_password(password: &str, hash: &str) -> bool {
     let mut m = Sha1::new();
@@ -50,20 +53,20 @@ impl PasswordAuth {
         }
     }
 
-    pub fn check_password_internal(&self, user: &str, password: &str) -> Option<String> {
+    pub fn check_password_internal(&self, user: &str, password: &str) -> ReturnCode {
         match self.users.get(user) {
             Some(hash) => {
                 if let Some(h) = hash.strip_prefix("{SHA}") {
                     if check_sha_password(password, h) {
-                        Some("default".to_string())
+                        ReturnCode::Accepted
                     } else {
-                        None
+                        ReturnCode::BadUsernameOrPassword
                     }
                 } else {
-                    None
+                    ReturnCode::BadUsernameOrPassword
                 }
             }
-            None => None,
+            None => ReturnCode::BadUsernameOrPassword,
         }
     }
 }
@@ -76,8 +79,12 @@ impl AuthProvider for PasswordAuth {
         Ok(())
     }
 
-    async fn check_password(&self, user: &str, password: &str) -> Option<String> {
-        self.check_password_internal(user, password)
+    async fn check_password(&self, user: &str, password: &str) -> AuthResponse {
+        let return_code = self.check_password_internal(user, password);
+        AuthResponse {
+            return_code,
+            tenant: None,
+        }
     }
 }
 
@@ -104,12 +111,15 @@ mod tests {
 
         assert_eq!(
             pa.check_password_internal("user1", "password1"),
-            Some("default".to_string())
+            ReturnCode::Accepted
         );
-        assert_eq!(pa.check_password_internal("user1", "password2"), None);
+        assert_eq!(
+            pa.check_password_internal("user1", "password2"),
+            ReturnCode::BadUsernameOrPassword
+        );
         assert_eq!(
             pa.check_password_internal("user5", "password5"),
-            Some("default".to_string())
+            ReturnCode::Accepted
         );
     }
 }
