@@ -172,4 +172,109 @@ mod testpersist {
             assert_eq!(next_mid, 12);
         }
     }
+
+    async fn create_session(
+        sessionprovider: &mut Box<dyn sessions::persist::SessionPersistProvider>,
+    ) -> i32 {
+        let session1: String = "session1".to_string();
+
+        let first_session = sessionprovider.persist_session(session1.clone()).await;
+        assert!(first_session.is_ok());
+        let session_id = if let Ok(session) = first_session {
+            let (id, _, _, _) = session;
+            id
+        } else {
+            -1
+        };
+
+        assert!(session_id > 0);
+
+        session_id
+    }
+
+    #[tokio::test]
+    async fn test_subscribe() {
+        let (mut provider, mut sessionprovider) = createdb().await;
+
+        let session_id = create_session(&mut sessionprovider).await;
+
+        let testtopic1: String = "testtopic1".to_string();
+        let topic = provider.persist_topic(testtopic1.clone()).await;
+        assert!(topic.is_ok());
+        let topic_id = topic.unwrap();
+
+        let subscribe = provider.persist_subscribe(session_id, topic_id, 0).await;
+        assert!(subscribe.is_ok());
+
+        let subscriptions = provider.load_persistent_subscriptions(topic_id).await;
+        assert!(subscriptions.is_ok());
+
+        let sub_list = subscriptions.unwrap();
+        assert_eq!(sub_list.len(), 1);
+
+        assert_eq!(sub_list.get(0).unwrap().0.session, "session1");
+        assert_eq!(sub_list.get(0).unwrap().0.internal_id, session_id);
+        assert_eq!(sub_list.get(0).unwrap().1, 0);
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_update() {
+        let (mut provider, mut sessionprovider) = createdb().await;
+
+        let session_id = create_session(&mut sessionprovider).await;
+
+        let testtopic1: String = "testtopic1".to_string();
+        let topic = provider.persist_topic(testtopic1.clone()).await;
+        assert!(topic.is_ok());
+        let topic_id = topic.unwrap();
+
+        let subscribe = provider.persist_subscribe(session_id, topic_id, 0).await;
+        assert!(subscribe.is_ok());
+
+        let update = provider
+            .persist_update_subscribe(session_id, topic_id, 2)
+            .await;
+        assert!(update.is_ok());
+
+        let subscriptions = provider.load_persistent_subscriptions(topic_id).await;
+        assert!(subscriptions.is_ok());
+
+        let sub_list = subscriptions.unwrap();
+        assert_eq!(sub_list.len(), 1);
+
+        assert_eq!(sub_list.get(0).unwrap().0.session, "session1");
+        assert_eq!(sub_list.get(0).unwrap().0.internal_id, session_id);
+        assert_eq!(sub_list.get(0).unwrap().1, 2);
+    }
+
+    #[tokio::test]
+    async fn test_unsubscribe() {
+        let (mut provider, mut sessionprovider) = createdb().await;
+
+        let session_id = create_session(&mut sessionprovider).await;
+
+        let testtopic1: String = "testtopic1".to_string();
+        let topic = provider.persist_topic(testtopic1.clone()).await;
+        assert!(topic.is_ok());
+        let topic_id = topic.unwrap();
+
+        let subscribe = provider.persist_subscribe(session_id, topic_id, 0).await;
+        assert!(subscribe.is_ok());
+
+        let subscriptions = provider.load_persistent_subscriptions(topic_id).await;
+        assert!(subscriptions.is_ok());
+
+        let sub_list = subscriptions.unwrap();
+        assert_eq!(sub_list.len(), 1);
+
+        // Unsubscribe
+        let unsubscribe = provider.persist_unsubscribe(session_id, topic_id).await;
+        assert!(unsubscribe.is_ok());
+
+        let subscriptions_after = provider.load_persistent_subscriptions(topic_id).await;
+        assert!(subscriptions_after.is_ok());
+
+        let sub_list_after = subscriptions_after.unwrap();
+        assert_eq!(sub_list_after.len(), 0);
+    }
 }
