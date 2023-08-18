@@ -79,8 +79,8 @@ impl PersistProvider for PersistTopicTest {
         &mut self,
         _topic_id: i32,
         _msg: &MQTTMessagePublish,
-    ) -> Result<(), BrokerError> {
-        Ok(())
+    ) -> Result<i32, BrokerError> {
+        Ok(0)
     }
 
     async fn persist_delete_retain(&mut self, _topic_id: i32) -> Result<(), BrokerError> {

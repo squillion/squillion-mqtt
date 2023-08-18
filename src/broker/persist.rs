@@ -59,7 +59,7 @@ pub trait PersistProvider: Sync + Send {
         &mut self,
         topic_id: i32,
         msg: &MQTTMessagePublish,
-    ) -> Result<(), BrokerError>;
+    ) -> Result<i32, BrokerError>;
 
     async fn persist_delete_retain(&mut self, topic_id: i32) -> Result<(), BrokerError>;
 

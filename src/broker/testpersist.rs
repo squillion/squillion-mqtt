@@ -3,9 +3,9 @@ mod testpersist {
     use std::fs;
     use std::path::Path;
 
-    use super::*;
     use crate::broker::persist;
     use crate::config;
+    use crate::messages::MQTTMessagePublish;
     use crate::{broker, sessions};
 
     pub fn initialize() {
@@ -276,5 +276,87 @@ mod testpersist {
 
         let sub_list_after = subscriptions_after.unwrap();
         assert_eq!(sub_list_after.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_topic_persist_retain_message() {
+        let (mut provider, _) = createdb().await;
+
+        let testtopic1: String = "testtopic1".to_string();
+        let topic = provider.persist_topic(testtopic1.clone()).await;
+        assert!(topic.is_ok());
+        let topic_id = topic.unwrap();
+
+        let msg_bytes = "Test message".as_bytes().to_vec();
+        let mut msg = MQTTMessagePublish::new();
+        msg.set_qos(1);
+        msg.set_topic(testtopic1.clone());
+        msg.set_message(msg_bytes.clone());
+
+        let message = provider.persist_retain(topic_id, &msg).await;
+        assert!(message.is_ok());
+        let message_id = message.unwrap();
+
+        let loadedtopics = provider.load_persistent_topics().await;
+        assert!(loadedtopics.is_ok());
+
+        if let Ok(topics) = loadedtopics {
+            assert_eq!(topics.len(), 1);
+            assert_eq!(topics.get(0).unwrap().topic_name, testtopic1);
+            assert_eq!(topics.get(0).unwrap().retained_message_id, Some(message_id));
+        }
+
+        let retained_message = provider.load_persistent_message(message_id).await;
+        assert!(retained_message.is_ok());
+
+        if let Ok(loaded_message) = retained_message {
+            assert_eq!(*loaded_message.get_topic(), testtopic1);
+            assert_eq!(loaded_message.get_qos(), 1);
+            assert_eq!(*loaded_message.get_message(), msg_bytes);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_topic_persist_retain_message_delete() {
+        let (mut provider, _) = createdb().await;
+
+        let testtopic1: String = "testtopic1".to_string();
+        let topic = provider.persist_topic(testtopic1.clone()).await;
+        assert!(topic.is_ok());
+        let topic_id = topic.unwrap();
+
+        let msg_bytes = "Test message".as_bytes().to_vec();
+        let mut msg = MQTTMessagePublish::new();
+        msg.set_qos(0);
+        msg.set_topic(testtopic1.clone());
+        msg.set_message(msg_bytes.clone());
+
+        let message = provider.persist_retain(topic_id, &msg).await;
+        assert!(message.is_ok());
+        let message_id = message.unwrap();
+
+        let retained_message = provider.load_persistent_message(message_id).await;
+        assert!(retained_message.is_ok());
+
+        if let Ok(loaded_message) = retained_message {
+            assert_eq!(*loaded_message.get_topic(), testtopic1.clone());
+            assert_eq!(loaded_message.get_qos(), 0);
+            assert_eq!(*loaded_message.get_message(), msg_bytes);
+        }
+
+        let delete_message = provider.persist_delete_retain(topic_id).await;
+        assert!(delete_message.is_ok());
+
+        let loadedtopics = provider.load_persistent_topics().await;
+        assert!(loadedtopics.is_ok());
+
+        if let Ok(topics) = loadedtopics {
+            assert_eq!(topics.len(), 1);
+            assert_eq!(topics.get(0).unwrap().topic_name, testtopic1);
+            assert_eq!(topics.get(0).unwrap().retained_message_id, None);
+        }
+
+        let retained_message = provider.load_persistent_message(message_id).await;
+        assert!(retained_message.is_err());
     }
 }

@@ -441,7 +441,7 @@ impl PersistProvider for PersistTopicSQL {
         &mut self,
         topic_id: i32,
         msg: &MQTTMessagePublish,
-    ) -> Result<(), BrokerError> {
+    ) -> Result<i32, BrokerError> {
         let client = &self
             .pool
             .get()
@@ -474,7 +474,7 @@ impl PersistProvider for PersistTopicSQL {
                             "Message retain failed".to_owned(),
                         ))
                     } else {
-                        Ok(())
+                        Ok(retid)
                     }
                 } else {
                     Err(BrokerError::PersistError(

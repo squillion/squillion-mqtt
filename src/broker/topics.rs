@@ -332,7 +332,7 @@ impl Subscriptions {
         &mut self,
         topic_id: i32,
         msg: &MQTTMessagePublish,
-    ) -> Result<(), BrokerError> {
+    ) -> Result<i32, BrokerError> {
         self.persist.persist_retain(topic_id, msg).await
     }
 
