@@ -54,18 +54,18 @@ impl PersistTopicSQL {
             );
 
             CREATE TABLE qosin (
-                qosin_id INTEGER NOT NULL,
+                qosin_id INTEGER PRIMARY KEY,
                 session_id integer NOT NULL,
-                received timestamp NOT NULL DEFAULT(now()),
+                received timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 mid integer NOT NULL,
                 FOREIGN KEY (session_id) REFERENCES sessions (id)
             );
 
             CREATE TABLE qosout (
-                qosout_id INTEGER NOT NULL,
+                qosout_id INTEGER PRIMARY KEY,
                 session_id integer NOT NULL,
                 message_id integer,
-                received timestamp NOT NULL DEFAULT(now()),
+                received timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 type integer NOT NULL,
                 mid integer NOT NULL,
                 dup boolean NOT NULL DEFAULT(FALSE),

@@ -359,4 +359,106 @@ mod testpersist {
         let retained_message = provider.load_persistent_message(message_id).await;
         assert!(retained_message.is_err());
     }
+
+    #[tokio::test]
+    async fn test_persist_qos_incoming_store() {
+        let (_, mut sessionprovider) = createdb().await;
+
+        let session_id = create_session(&mut sessionprovider).await;
+
+        assert!(sessionprovider
+            .persist_qos_incoming_store(session_id, 2)
+            .await
+            .is_ok());
+        assert!(sessionprovider
+            .persist_qos_incoming_store(session_id, 5)
+            .await
+            .is_ok());
+
+        let mut qos_incoming = sessionprovider.persist_qos_incoming_load(session_id).await;
+        assert!(qos_incoming.is_ok());
+        if let Ok(qos_ids) = qos_incoming {
+            assert_eq!(qos_ids.len(), 2);
+            assert!(!qos_ids.contains(&1));
+            assert!(qos_ids.contains(&2));
+            assert!(qos_ids.contains(&5));
+        }
+
+        let clear = sessionprovider.persist_qos_incoming_clear(session_id).await;
+        assert!(clear.is_ok());
+
+        qos_incoming = sessionprovider.persist_qos_incoming_load(session_id).await;
+        assert!(qos_incoming.is_ok());
+        if let Ok(qos_ids) = qos_incoming {
+            assert_eq!(qos_ids.len(), 0);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_persist_qos_incoming_delete() {
+        let (_, mut sessionprovider) = createdb().await;
+
+        let session_id = create_session(&mut sessionprovider).await;
+
+        assert!(sessionprovider
+            .persist_qos_incoming_store(session_id, 10)
+            .await
+            .is_ok());
+        assert!(sessionprovider
+            .persist_qos_incoming_store(session_id, 11)
+            .await
+            .is_ok());
+        assert!(sessionprovider
+            .persist_qos_incoming_store(session_id, 12)
+            .await
+            .is_ok());
+
+        let mut qos_incoming = sessionprovider.persist_qos_incoming_load(session_id).await;
+        assert!(qos_incoming.is_ok());
+        if let Ok(qos_ids) = qos_incoming {
+            assert_eq!(qos_ids.len(), 3);
+            assert!(qos_ids.contains(&10));
+            assert!(qos_ids.contains(&11));
+            assert!(qos_ids.contains(&12));
+        }
+
+        let delete = sessionprovider
+            .persist_qos_incoming_delete(session_id, 11)
+            .await;
+        assert!(delete.is_ok());
+        qos_incoming = sessionprovider.persist_qos_incoming_load(session_id).await;
+        assert!(qos_incoming.is_ok());
+        if let Ok(qos_ids) = qos_incoming {
+            assert_eq!(qos_ids.len(), 2);
+            assert!(qos_ids.contains(&10));
+            assert!(!qos_ids.contains(&11));
+            assert!(qos_ids.contains(&12));
+        }
+
+        assert!(sessionprovider
+            .persist_qos_incoming_delete(session_id, 10)
+            .await
+            .is_ok());
+        assert!(sessionprovider
+            .persist_qos_incoming_delete(session_id, 12)
+            .await
+            .is_ok());
+        qos_incoming = sessionprovider.persist_qos_incoming_load(session_id).await;
+        assert!(qos_incoming.is_ok());
+        if let Ok(qos_ids) = qos_incoming {
+            assert_eq!(qos_ids.len(), 0);
+            assert!(!qos_ids.contains(&10));
+            assert!(!qos_ids.contains(&11));
+            assert!(!qos_ids.contains(&12));
+        }
+
+        let clear = sessionprovider.persist_qos_incoming_clear(session_id).await;
+        assert!(clear.is_ok());
+
+        qos_incoming = sessionprovider.persist_qos_incoming_load(session_id).await;
+        assert!(qos_incoming.is_ok());
+        if let Ok(qos_ids) = qos_incoming {
+            assert_eq!(qos_ids.len(), 0);
+        }
+    }
 }
