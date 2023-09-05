@@ -5,7 +5,8 @@ mod testpersist {
 
     use crate::broker::persist;
     use crate::config;
-    use crate::messages::MQTTMessagePublish;
+    use crate::messages::codec::MQTTMessage;
+    use crate::messages::{MQTTMessagePublish, MQTTMessagePubrec};
     use crate::{broker, sessions};
 
     pub fn initialize() {
@@ -459,6 +460,218 @@ mod testpersist {
         assert!(qos_incoming.is_ok());
         if let Ok(qos_ids) = qos_incoming {
             assert_eq!(qos_ids.len(), 0);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_persist_qos_outgoing_store() {
+        let (_, mut sessionprovider) = createdb().await;
+
+        let session_id = create_session(&mut sessionprovider).await;
+
+        let msg_bytes = "Test message".as_bytes().to_vec();
+        let mut msg = MQTTMessagePublish::new();
+        msg.set_qos(2);
+        msg.set_topic("testtopic".to_string());
+        msg.set_message(msg_bytes.clone());
+
+        let qos_outgoing_msg = sessionprovider
+            .persist_qos_outgoing_store(session_id, 12, &MQTTMessage::Publish(msg))
+            .await;
+
+        assert!(qos_outgoing_msg.is_ok());
+
+        let msg_pubrec = MQTTMessagePubrec::new();
+        let qos_outgoing_pubrec = sessionprovider
+            .persist_qos_outgoing_store(session_id, 5, &&MQTTMessage::PubRec(msg_pubrec))
+            .await;
+
+        assert!(qos_outgoing_pubrec.is_ok());
+
+        let qos_outgoing = sessionprovider.persistent_qosout_load(session_id).await;
+        assert!(qos_outgoing.is_ok());
+        if let Ok(messages) = qos_outgoing {
+            assert_eq!(messages.len(), 2);
+            let mut pubrec_found = false;
+            let mut publish_found = false;
+            for message_wrapped in messages {
+                match message_wrapped {
+                    MQTTMessage::Publish(m) => {
+                        publish_found = true;
+                        assert_eq!(m.get_topic(), "testtopic");
+                        assert_eq!(m.get_message(), &msg_bytes);
+                        assert_eq!(m.get_qos(), 2);
+                        assert_eq!(m.get_identifier(), 12);
+                    }
+                    MQTTMessage::PubRec(_) => {
+                        pubrec_found = true;
+                    }
+                    _ => {
+                        assert!(false);
+                    }
+                }
+            }
+            assert!(pubrec_found);
+            assert!(publish_found);
+        }
+
+        assert!(sessionprovider
+            .persist_qos_outgoing_clear(session_id)
+            .await
+            .is_ok());
+        let qos_outgoing_cleared = sessionprovider.persistent_qosout_load(session_id).await;
+        assert!(qos_outgoing_cleared.is_ok());
+        if let Ok(messages) = qos_outgoing_cleared {
+            assert_eq!(messages.len(), 0);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_persist_qos_outgoing_update_dup() {
+        let (_, mut sessionprovider) = createdb().await;
+
+        let session_id = create_session(&mut sessionprovider).await;
+
+        let msg_bytes = "Test message".as_bytes().to_vec();
+        let mut msg = MQTTMessagePublish::new();
+        msg.set_qos(0);
+        msg.set_topic("testtopic".to_string());
+        msg.set_message(msg_bytes.clone());
+
+        let qos_outgoing_msg = sessionprovider
+            .persist_qos_outgoing_store(session_id, 22, &MQTTMessage::Publish(msg))
+            .await;
+
+        assert!(qos_outgoing_msg.is_ok());
+
+        let qos_outgoing = sessionprovider.persistent_qosout_load(session_id).await;
+        assert!(qos_outgoing.is_ok());
+        if let Ok(messages) = qos_outgoing {
+            assert_eq!(messages.len(), 1);
+            let message_wrapped = messages.first().unwrap();
+            assert!(matches!(message_wrapped, MQTTMessage::Publish(_)));
+            if let MQTTMessage::Publish(message) = message_wrapped {
+                assert_eq!(message.get_dup(), false);
+            }
+        }
+
+        let dup_update = sessionprovider
+            .persist_qos_outgoing_update_dup(session_id, 22, true)
+            .await;
+        assert!(dup_update.is_ok());
+
+        let qos_outgoing_updated = sessionprovider.persistent_qosout_load(session_id).await;
+        assert!(qos_outgoing_updated.is_ok());
+        if let Ok(messages) = qos_outgoing_updated {
+            assert_eq!(messages.len(), 1);
+            let message_wrapped = messages.first().unwrap();
+            assert!(matches!(message_wrapped, MQTTMessage::Publish(_)));
+            if let MQTTMessage::Publish(message) = message_wrapped {
+                assert_eq!(message.get_dup(), true);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_persist_qos_outgoing_delete() {
+        let (_, mut sessionprovider) = createdb().await;
+
+        let session_id = create_session(&mut sessionprovider).await;
+
+        let msg_bytes = "Test message".as_bytes().to_vec();
+        let mut msg = MQTTMessagePublish::new();
+        msg.set_qos(2);
+        msg.set_topic("testtopic".to_string());
+        msg.set_message(msg_bytes.clone());
+
+        let qos_outgoing_msg = sessionprovider
+            .persist_qos_outgoing_store(session_id, 10, &MQTTMessage::Publish(msg))
+            .await;
+
+        assert!(qos_outgoing_msg.is_ok());
+
+        let msg_pubrec = MQTTMessagePubrec::new();
+        let qos_outgoing_pubrec = sessionprovider
+            .persist_qos_outgoing_store(session_id, 30, &&MQTTMessage::PubRec(msg_pubrec))
+            .await;
+
+        assert!(qos_outgoing_pubrec.is_ok());
+
+        let qos_outgoing = sessionprovider.persistent_qosout_load(session_id).await;
+        assert!(qos_outgoing.is_ok());
+        if let Ok(messages) = qos_outgoing {
+            assert_eq!(messages.len(), 2);
+            let mut pubrec_found = false;
+            let mut publish_found = false;
+            for message_wrapped in messages {
+                match message_wrapped {
+                    MQTTMessage::Publish(_) => {
+                        publish_found = true;
+                    }
+                    MQTTMessage::PubRec(_) => {
+                        pubrec_found = true;
+                    }
+                    _ => {
+                        assert!(false);
+                    }
+                }
+            }
+            assert!(pubrec_found);
+            assert!(publish_found);
+        }
+
+        assert!(sessionprovider
+            .persist_qos_outgoing_delete(session_id, 30)
+            .await
+            .is_ok());
+        let qos_outgoing_d1 = sessionprovider.persistent_qosout_load(session_id).await;
+        assert!(qos_outgoing_d1.is_ok());
+        if let Ok(messages) = qos_outgoing_d1 {
+            assert_eq!(messages.len(), 1);
+            let mut pubrec_found = false;
+            let mut publish_found = false;
+            for message_wrapped in messages {
+                match message_wrapped {
+                    MQTTMessage::Publish(_) => {
+                        publish_found = true;
+                    }
+                    MQTTMessage::PubRec(_) => {
+                        pubrec_found = true;
+                    }
+                    _ => {
+                        assert!(false);
+                    }
+                }
+            }
+            assert!(!pubrec_found);
+            assert!(publish_found);
+        }
+
+        assert!(sessionprovider
+            .persist_qos_outgoing_delete(session_id, 10)
+            .await
+            .is_ok());
+        let qos_outgoing_d2 = sessionprovider.persistent_qosout_load(session_id).await;
+        assert!(qos_outgoing_d2.is_ok());
+        if let Ok(messages) = qos_outgoing_d2 {
+            assert_eq!(messages.len(), 0);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_persist_qos_outgoing_clear() {
+        let (_, mut sessionprovider) = createdb().await;
+
+        let session_id = create_session(&mut sessionprovider).await;
+
+        assert!(sessionprovider
+            .persist_qos_outgoing_clear(session_id)
+            .await
+            .is_ok());
+        let qos_outgoing_cleared = sessionprovider.persistent_qosout_load(session_id).await;
+        assert!(qos_outgoing_cleared.is_ok());
+        if let Ok(messages) = qos_outgoing_cleared {
+            assert_eq!(messages.len(), 0);
         }
     }
 }

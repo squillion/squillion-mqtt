@@ -376,8 +376,8 @@ impl SessionPersistProvider for PersistSessionSQL {
                     }
                 };
 
-                transaction
-                .execute(
+                let _qosoutid = transaction
+                .query_row(
                     "INSERT INTO qosout(session_id, type, mid, message_id) VALUES (:session_id, :type, :mid, :message_id) RETURNING qosout_id",
                     named_params! {
                         ":session_id": session_id,
@@ -385,6 +385,7 @@ impl SessionPersistProvider for PersistSessionSQL {
                         ":mid": imid,
                         ":message_id": message_id,
                         },
+                        |row| row.get::<_, i32>(0),
                 )
                 .map_err(|err| {
                     SessionError::Persist(format!("Message retain failed: {:?}", err))
@@ -425,7 +426,7 @@ impl SessionPersistProvider for PersistSessionSQL {
                     ":session_id": session_id,
                     ":mid": mid,
                     },
-                    |row| row.get::<_, i32>(0),
+                    |row| row.get::<_, Option<i32>>(0),
                 )
                 .map_err(|err| {
                     SessionError::Persist(format!("Delete qosout message getting message id failed: {:?}", err))
@@ -444,16 +445,18 @@ impl SessionPersistProvider for PersistSessionSQL {
                     SessionError::Persist(format!("Error deleting qosout mid: {:?}", err))
                 })?;
 
-                transaction
-                .execute(
-                    "DELETE FROM messages WHERE id = :id",
-                    named_params! {
-                        ":id": message_id,
-                        },
-                )
-                .map_err(|err| {
-                    SessionError::Persist(format!("Qosout delete message failed: {:?}", err))
-                })?;
+                if let Some(table_message_id) = message_id {
+                    transaction
+                    .execute(
+                        "DELETE FROM messages WHERE id = :id",
+                        named_params! {
+                            ":id": table_message_id,
+                            },
+                    )
+                    .map_err(|err| {
+                        SessionError::Persist(format!("Qosout delete message failed: {:?}", err))
+                    })?;
+                }
 
                 transaction.commit().map_err(|_| {
                     SessionError::Persist("QoS outgoing delete commit failed".to_owned())
@@ -522,7 +525,7 @@ impl SessionPersistProvider for PersistSessionSQL {
                         named_params! {
                         ":session_id": session_id,
                         },
-                        |row| row.get::<_, i32>(0),
+                        |row| row.get::<_, Option<i32>>(0),
                     )
                     .map_err(|err| {
                         SessionError::Persist(format!(
@@ -536,7 +539,9 @@ impl SessionPersistProvider for PersistSessionSQL {
                     let mid = row.map_err(|err| {
                         SessionError::Persist(format!("Error getting value: {:?}", err))
                     })?;
-                    message_ids.push(mid);
+                    if let Some(table_message_id) = mid {
+                        message_ids.push(table_message_id);
+                    }
                 }
                 drop(stmt);
 
